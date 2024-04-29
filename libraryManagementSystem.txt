@@ -1,0 +1,202 @@
+-------------------------------------------------Ahmad shoshara_______Abdulrahman Kassar
+--------------------------------------------------------------------
+
+-----Question One-----
+---- 1)table
+create table books(
+b_name varchar2(20) primary key,
+b_date date, 
+b_cost number (10)
+);
+
+---- 2)table
+create table customers(
+c_id varchar2(10) primary key,
+c_mob_num number(15),
+c_limit number(3) 
+);
+
+---- 3)table
+create table rent(
+r_b_name varchar2(20),
+r_c_id varchar2(10),
+r_date date,
+foreign key (r_b_name) references books(b_name),
+foreign key (r_c_id) references customers(c_id)
+);
+ 
+---4 )table for question 7 
+create table RENT_COPY (
+operation varchar2(30),
+US_NAME varchar2(30) ,
+OP_DATE date,
+R_O_DATE date,
+R_N_DATE date
+);
+
+-----Question Two-----
+create sequence 
+customers_seq
+start with 1
+increment by 1;
+
+
+-----Question Three-----
+create index rent_book_name on rent(r_b_name);
+
+-----Question Four-----
+create or replace PROCEDURE print_rented_books is
+cursor b_list IS
+select R_B_NAME from rent ;
+ b_l RENT.R_B_NAME% TYPE;
+begin 
+for b_l in b_list
+loop 
+dbms_output.put_line(b_l.R_B_NAME);
+end loop ;
+  exception 
+when cursor_already_open then 
+  dbms_output.put_line('Cursor is already opened!');
+END;
+
+
+
+-----Question Five-----
+
+create or replace function check_limit(cid number,bname VARCHAR2) RETURN number is
+counter NUMBER;
+climit NUMBER;
+begin
+select count (*)into counter
+from Rent
+where r_c_id=cid;
+select C_LIMIT into climit from
+customers
+where c_id=cid;
+if climit<counter then return 0;
+else return 1;
+end if;
+EXCEPTION when NO_data_found then 
+dbms_output.put_line('No matches for customer with this id:'||cid);
+return null;
+end;
+
+
+
+-----Question Six-----
+create or replace procedure make_rent(cid NUMBER,bname VARCHAR2) is
+rent_allowed NUMBER;
+begin 
+rent_allowed :=check_limit(cid,bname);
+if rent_allowed=1 THEN
+insert into Rent(R_C_ID,R_B_NAME,R_DATE) 
+values (cid,bname,sysdate);
+dbms_output.put_line('rent completed successfully');
+else 
+dbms_output.put_line('Sorry, you cannot rent at the moment');
+end if ;
+EXCEPTION
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+end;
+
+
+
+-----Question Seven-----
+create or replace trigger UP_RENT AFTER update of R_DATE on RENT
+for each row
+begin
+insert into RENT_COPY(OPERATION, US_NAME ,OP_DATE,R_O_DATE,R_N_DATE) 
+values('UPDATE',user,sysdate,:OLD.R_DATE,:NEW.R_DATE);
+end;
+
+
+--question eight-----
+
+---insert into tables
+begin
+--insert in books table
+insert into  books (b_name, b_date,b_cost)
+values('Rami', sysdate,1000);
+
+insert into  books (b_name, b_date,b_cost)
+values('Ahmad', sysdate,2000);
+
+insert into  books (b_name, b_date,b_cost)
+values('Ali', sysdate,5000);
+
+--insert in customers table
+insert into customers(c_id, c_mob_num, c_limit)
+values(1,53533,3);
+
+insert into customers(c_id, c_mob_num, c_limit)
+values(customers_seq.nextval,0937405410,3);
+
+insert into customers(c_id, c_mob_num, c_limit)
+values(customers_seq.nextval,11134,3);
+
+
+--insert into rent table
+DECLARE
+id1 CUSTOMERS.C_ID% TYPE := &id1;
+book1 BOOKS.B_NAME% TYPE:='&book1';
+id2 CUSTOMERS.C_ID% TYPE := &id2;
+book2 BOOKS.B_NAME% TYPE:='&book2';
+begin
+make_rent(id1, book1);
+make_rent(id2,book2);
+end;
+
+--print rented books
+BEGIN
+print_rented_books;
+end;
+
+
+--procedure to print operations on rented books
+create or replace PROCEDURE rent_list is
+cursor b_list IS
+select OPERATION from rent_copy ;
+ b_l RENT_COPY.OPERATION% TYPE;
+begin 
+for b_l in b_list
+loop 
+dbms_output.put_line(b_l.OPERATION);
+end loop ;
+  exception 
+when cursor_already_open then 
+  dbms_output.put_line('Cursor is already opened!');
+END;
+BEGIN
+update RENT 
+set R_DATE = sysdate
+where R_C_ID = 1;
+end;
+--implement the previous procedure
+begin
+rent_list;
+end;
+ 
+--trigger to update book name
+create or replace
+trigger UP_BNAME after update of  B_NAME on BOOKS
+for each row
+begin
+UPDATE RENT 
+set R_B_NAME = :NEW.B_NAME
+where R_B_NAME = :OLD.B_NAME;
+end;
+
+--update book name
+DECLARE 
+B_OLD BOOKS.B_NAME%TYPE := '&B_OLD';
+B_NEW BOOKS.B_NAME%TYPE := '&B_NEW';
+BEGIN
+UPDATE BOOKS
+set B_NAME = B_NEW
+where B_NAME=B_OLD;
+end;
+
+
+
+
